@@ -58,8 +58,8 @@ def cart():
         product = record[pid]
         price = product["Price"]
         gst = price * 0.05
-        total_price = (price + gst) * qty
-        gst_total += gst * qty
+        total_amount= (price ) * qty
+        total_price = total_amount + gst
         total += total_price
         cart_items.append({
             "id": pid,
@@ -95,12 +95,9 @@ def checkout():
     for pid, qty in cart.items():
         if pid in record and record[pid]["Qn"] >= qty:
             price = record[pid]["Price"]
-            gst = price * 0.05
-            final_price = price + gst
-            billing = final_price * qty
+            billing = price * qty
             record[pid]["Qn"] -= qty
             total += billing
-
             sale_line = f"1,{name},{email},{phone},{pid},{record[pid]['Name']},{qty},{price},{price*qty},{time.ctime()}\n"
             sale_entries.append(sale_line)
         else:
@@ -108,12 +105,15 @@ def checkout():
 
     # Apply discounts
     msg = ""
+    total_after_discount=0
+    gst = total * 0.05
+    total += gst
     if total >= 7000:
         discount = total * 0.10
-        total -= discount
+        total_after_discount= total-discount
         msg = "You got a 10% discount"
     elif total >= 5000:
-        total -= 500
+        total_after_discount = total-500
         msg = "You got a flat ₹500 discount"
 
     with open("records.json", "w") as f:
@@ -125,13 +125,25 @@ def checkout():
     session.pop("cart", None)
 
     result = {
-        "status": "success",
-        "name": name,
-        "billing": total,
-        "discount_note": msg
-    }
+    "status": "success",
+    "name": name,
+    "email": email,
+    "phone": phone,
+    "items": len(cart),
+    "gst": gst,
+    "total_after_discount": total_after_discount,
+    "billing": total,
+    "discount_note": msg,
+    "products": [{
+        "name": record[pid]['Name'],
+        "price": record[pid]['Price'],
+        "quantity": qty
+    } for pid, qty in cart.items()]
+}
+
+
 
     return render_template("result.html", result=result)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
